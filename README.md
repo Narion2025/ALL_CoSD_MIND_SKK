@@ -1,0 +1,1 @@
+# ALL_CoSD_MIND_SKK
