@@ -1,6 +1,4 @@
 import os
-import csv
-import yaml
 from pathlib import Path
 from collections import defaultdict
 import tkinter as tk
@@ -16,6 +14,7 @@ class OmniTool(tk.Tk):
         self.geometry("600x500")
 
         self.markers = {}
+        self.meta_markers = {}
         self.combinations = {}
 
         self.create_widgets()
@@ -36,6 +35,9 @@ class OmniTool(tk.Tk):
         btn_analyze = tk.Button(frame, text="Analyze Text", command=self.analyze_text)
         btn_analyze.pack(fill=tk.X, pady=(5,0))
 
+        btn_summary = tk.Button(frame, text="Summarize Markers", command=self.show_summary)
+        btn_summary.pack(fill=tk.X, pady=(5,0))
+
         self.text_output = tk.Text(frame, height=20)
         self.text_output.pack(fill=tk.BOTH, expand=True, pady=(10,0))
 
@@ -48,6 +50,7 @@ class OmniTool(tk.Tk):
         if not directory:
             return
         self.markers.clear()
+        self.meta_markers.clear()
         dir_path = Path(directory)
         for file in dir_path.rglob('*'):
             if file.suffix.lower() in ['.yaml', '.yml', '.csv']:
@@ -55,8 +58,12 @@ class OmniTool(tk.Tk):
                 if file.suffix.lower() == '.csv':
                     save_markers_yaml(set(m), file.with_suffix('.yaml'))
                 for marker in m:
-                    self.markers.setdefault(marker, 0)
-                    self.markers[marker] += 1
+                    if isinstance(marker, dict) and marker.get('meta'):
+                        name = marker['meta']
+                        self.meta_markers[name] = self.meta_markers.get(name, 0) + 1
+                    else:
+                        self.markers.setdefault(marker, 0)
+                        self.markers[marker] += 1
         self.log(f"Loaded {len(self.markers)} markers from {directory}")
 
     def add_file(self):
@@ -74,8 +81,12 @@ class OmniTool(tk.Tk):
         if file_path.lower().endswith('.csv'):
             save_markers_yaml(set(m), Path(file_path).with_suffix('.yaml'))
         for marker in m:
-            self.markers.setdefault(marker, 0)
-            self.markers[marker] += 1
+            if isinstance(marker, dict) and marker.get('meta'):
+                name = marker['meta']
+                self.meta_markers[name] = self.meta_markers.get(name, 0) + 1
+            else:
+                self.markers.setdefault(marker, 0)
+                self.markers[marker] += 1
         self.log(f"Added markers from {file_path}")
 
     def create_combination(self):
@@ -120,6 +131,18 @@ class OmniTool(tk.Tk):
         self.log("Analysis result:")
         for k, v in counts.items():
             self.log(f"  {k}: {v}")
+
+    def show_summary(self):
+        if not self.markers and not self.meta_markers:
+            messagebox.showinfo("Info", "No markers loaded")
+            return
+        self.log("Marker summary:")
+        for m, c in sorted(self.markers.items()):
+            self.log(f"  {m}: {c}")
+        if self.meta_markers:
+            self.log("Meta markers:")
+            for m, c in sorted(self.meta_markers.items()):
+                self.log(f"  {m}: {c}")
 
 
 def main():
